@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Editor Visual</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: auto;
+      font-family: sans-serif;
+    }
+    #toolbar {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: linear-gradient(135deg, #ffffff, #e0e0e0);
+      padding: 8px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+      cursor: move;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #ccc;
+    }
+    #toolbar button, #toolbar select, #toolbar input {
+      padding: 6px;
+      border: none;
+      border-radius: 6px;
+      background: #f5f5f5;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #toolbar button:hover, #toolbar select:hover, #toolbar input:hover {
+      background: #e0e0e0;
+    }
+    #editor-wrapper {
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      position: relative;
+    }
+    #editor {
+      position: relative;
+      min-height: 2000px;
+      min-width: 100%;
+    }
+    .text-box {
+      position: absolute;
+      background: transparent;
+      border: none;
+      outline: none;
+      resize: both;
+      min-width: 50px;
+      min-height: 20px;
+      color: black;
+      font-size: 20px;
+      cursor: move;
+      user-select: none;
+    }
+    .selected {
+      border: 1px dashed #000;
+    }
+    #save-dialog {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 2000;
+    }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <button onclick="addText()">Texto</button>
+    <button onclick="addImage()">Imagem</button>
+    <button onclick="changeImage()">Trocar</button>
+
+    <select onchange="changeFontFamily(this.value)">
+      <option value="">Fonte</option>
+      <option value="Arial, sans-serif">Arial</option>
+      <option value="'Times New Roman', serif">Times New Roman</option>
+      <option value="'Courier New', monospace">Courier New</option>
+      <option value="Georgia, serif">Georgia</option>
+      <option value="Verdana, sans-serif">Verdana</option>
+      <option value="'Comic Sans MS', cursive">Comic Sans</option>
+      <option value="Impact, sans-serif">Impact</option>
+    </select>
+
+    <select onchange="changeFontSize(this.value)">
+      <option value="">Tamanho</option>
+      <option value="8px">8px</option>
+      <option value="10px">10px</option>
+      <option value="12px">12px</option>
+      <option value="14px">14px</option>
+      <option value="16px">16px</option>
+      <option value="18px">18px</option>
+      <option value="20px">20px</option>
+      <option value="24px">24px</option>
+      <option value="28px">28px</option>
+      <option value="32px">32px</option>
+      <option value="36px">36px</option>
+      <option value="40px">40px</option>
+      <option value="48px">48px</option>
+      <option value="60px">60px</option>
+    </select>
+
+    <input type="color" onchange="changeFontColor(this.value)">
+    <button onclick="toggleBold()">B</button>
+    <button onclick="toggleItalic()">I</button>
+    <button onclick="toggleUnderline()">U</button>
+    <button onclick="showSaveDialog()">Salvar Como</button>
+    <button onclick="openPage()">Abrir</button>
+    <input type="file" id="fileInput" style="display:none;" />
+  </div>
+
+  <div id="editor-wrapper">
+    <div id="editor"></div>
+  </div>
+
+  <div id="save-dialog">
+    <h3>Salvar Página</h3>
+    <label for="filename">Nome do arquivo:</label>
+    <input type="text" id="filename" value="pagina_editada" style="width: 100%; margin: 10px 0;">
+    <div style="display: flex; justify-content: space-between;">
+      <button onclick="hideSaveDialog()">Cancelar</button>
+      <button onclick="savePageWithName()">Salvar</button>
+    </div>
+  </div>
+
+  <script>
+    const editor = document.getElementById('editor');
+    const saveDialog = document.getElementById('save-dialog');
+    const filenameInput = document.getElementById('filename');
+    let selectedTextBox = null;
+    let isDragging = false;
+    let offsetX, offsetY;
+    let currentImageFile = null;
+
+    function addImage() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = e => {
+        const file = e.target.files[0];
+        if (file) {
+          currentImageFile = file;
+          const reader = new FileReader();
+          reader.onload = event => {
+            const img = document.createElement('img');
+            img.src = event.target.result;
+            editor.innerHTML = '';
+            editor.appendChild(img);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
+    }
+
+    function changeImage() {
+      addImage();
+    }
+
+    function addText() {
+      const text = document.createElement('div');
+      text.contentEditable = true;
+      text.className = 'text-box';
+      text.style.top = '50px';
+      text.style.left = '50px';
+      text.innerHTML = 'Digite aqui';
+      text.onmousedown = handleMouseDown;
+      text.onclick = (e) => {
+        e.stopPropagation();
+        selectTextBox(text);
+      };
+      editor.appendChild(text);
+      selectTextBox(text);
+    }
+
+    function selectTextBox(el) {
+      if (selectedTextBox) selectedTextBox.classList.remove('selected');
+      selectedTextBox = el;
+      el.classList.add('selected');
+      el.focus();
+    }
+
+    function changeFontFamily(font) {
+      if (selectedTextBox && font) {
+        selectedTextBox.style.fontFamily = font;
+        selectedTextBox.focus();
+      }
+    }
+
+    function changeFontSize(size) {
+      if (selectedTextBox && size) {
+        selectedTextBox.style.fontSize = size;
+        selectedTextBox.focus();
+      }
+    }
+
+    function changeFontColor(color) {
+      if (selectedTextBox) {
+        selectedTextBox.style.color = color;
+        selectedTextBox.focus();
+      }
+    }
+
+    function toggleBold() {
+      if (selectedTextBox) {
+        document.execCommand('bold', false, null);
+        selectedTextBox.focus();
+      }
+    }
+
+    function toggleItalic() {
+      if (selectedTextBox) {
+        document.execCommand('italic', false, null);
+        selectedTextBox.focus();
+      }
+    }
+
+    function toggleUnderline() {
+      if (selectedTextBox) {
+        document.execCommand('underline', false, null);
+        selectedTextBox.focus();
+      }
+    }
+
+    function handleMouseDown(e) {
+      const el = e.target;
+      if (el.classList.contains('text-box') && e.button === 0) {
+        selectTextBox(el);
+        e.preventDefault();
+        isDragging = true;
+
+        const rect = el.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+
+        function onMouseMove(ev) {
+          if (!isDragging) return;
+          
+          const editorRect = editor.getBoundingClientRect();
+          const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
+          const scrollTop = window.scrollY || document.documentElement.scrollTop;
+          
+          const newLeft = ev.clientX - offsetX - editorRect.left + scrollLeft;
+          const newTop = ev.clientY - offsetY - editorRect.top + scrollTop;
+          
+          el.style.left = newLeft + 'px';
+          el.style.top = newTop + 'px';
+        }
+
+        function onMouseUp() {
+          isDragging = false;
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      }
+    }
+
+    function showSaveDialog() {
+      saveDialog.style.display = 'block';
+    }
+
+    function hideSaveDialog() {
+      saveDialog.style.display = 'none';
+    }
+
+    function savePageWithName() {
+      const filename = filenameInput.value || 'pagina_editada';
+      savePage(filename);
+      hideSaveDialog();
+    }
+
+    function savePage(filename = 'pagina_editada') {
+      let content = '';
+      const img = editor.querySelector('img');
+      if (img && currentImageFile) {
+        content += `<img src="${currentImageFile.name}" style="display:block;">`;
+      }
+
+      const textBoxes = editor.querySelectorAll('.text-box');
+      textBoxes.forEach(box => {
+        const style = `
+          position: absolute;
+          left: ${box.style.left || '0px'};
+          top: ${box.style.top || '0px'};
+          font-family: ${box.style.fontFamily || 'sans-serif'};
+          font-size: ${box.style.fontSize || '20px'};
+          color: ${box.style.color || 'black'};
+          min-width: ${box.style.minWidth || '50px'};
+          min-height: ${box.style.minHeight || '20px'};
+          font-weight: ${box.style.fontWeight || 'normal'};
+          font-style: ${box.style.fontStyle || 'normal'};
+          text-decoration: ${box.style.textDecoration || 'none'};
+        `;
+        content += `<div style="${style.trim()}">${box.innerHTML}</div>`;
+      });
+
+      const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Página Editada</title></head>
+<body style="margin: 0;"><div style="position: relative;">${content}</div></body>
+</html>`;
+
+      const blob = new Blob([html], { type: 'text/html' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename.endsWith('.html') ? filename : filename + '.html';
+      link.click();
+    }
+
+    function openPage() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.html';
+      input.onchange = e => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = event => {
+            const doc = new DOMParser().parseFromString(event.target.result, 'text/html');
+            const bodyContent = doc.querySelector('body');
+            const div = bodyContent.querySelector('div');
+            editor.innerHTML = '';
+            editor.appendChild(div.cloneNode(true));
+
+            editor.querySelectorAll('div:not([style*="position: relative"])').forEach(tb => {
+              tb.classList.add('text-box');
+              tb.contentEditable = true;
+              tb.onmousedown = handleMouseDown;
+              tb.onclick = (e) => {
+                e.stopPropagation();
+                selectTextBox(tb);
+              };
+            });
+          };
+          reader.readAsText(file);
+        }
+      };
+      input.click();
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (!selectedTextBox) return;
+      if (e.ctrlKey && e.key === 'b') { e.preventDefault(); toggleBold(); }
+      else if (e.ctrlKey && e.key === 'i') { e.preventDefault(); toggleItalic(); }
+      else if (e.ctrlKey && e.key === 'u') { e.preventDefault(); toggleUnderline(); }
+    });
+
+    const toolbar = document.getElementById('toolbar');
+    toolbar.onmousedown = function(e) {
+      if (e.target.closest('button, select, input')) return;
+      e.preventDefault();
+      let shiftX = e.clientX - toolbar.getBoundingClientRect().left;
+      let shiftY = e.clientY - toolbar.getBoundingClientRect().top;
+
+      function moveAt(pageX, pageY) {
+        toolbar.style.left = pageX - shiftX + 'px';
+        toolbar.style.top = pageY - shiftY + 'px';
+      }
+
+      function onMouseMove(e) {
+        moveAt(e.pageX, e.pageY);
+      }
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', () => {
+        document.removeEventListener('mousemove', onMouseMove);
+      }, { once: true });
+    };
+
+    toolbar.ondragstart = () => false;
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.text-box') && !e.target.closest('#toolbar') && !e.target.closest('#save-dialog')) {
+        if (selectedTextBox) {
+          selectedTextBox.classList.remove('selected');
+          selectedTextBox = null;
+        }
+      }
+    });
+  </script>
+</body>
+</html>
