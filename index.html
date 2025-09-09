@@ -56,7 +56,7 @@
             <button type="submit" class="btn btn-primary w-100">Entrar</button>
             <div class="text-center mt-3">
                 <p>ou</p>
-                <button type="button" id="loginGoogle" class="btn btn-danger w-100">Entrar com Google</button>
+                <a href="/nutri/login_google.html" class="btn btn-danger w-100">Entrar com Google</a>
                 <p class="mt-3">Não tem uma conta? <a href="#" data-bs-toggle="modal" data-bs-target="#cadastroModal">Cadastrar</a></p>
             </div>
         </form>
@@ -121,22 +121,14 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Inicializar Supabase
-        const supabase = Supabase.createClient('https://vjpxlkyfjtrhdsyrxsko.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqcHhsa3lmanRyaGRzeXJ4c2tvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4OTUwMDEsImV4cCI6MjA2MDQ3MTAwMX0.HkMPdlcpT75u75z6j5BbBwYW8QLzQGKBJxyHb-St7k0');
-
         // Registrar Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/nutri/sw.js')
-                    .then(registration => {
-                        console.log('Service Worker registrado com sucesso:', registration);
-                    })
-                    .catch(error => {
-                        console.error('Erro ao registrar Service Worker:', error);
-                    });
+                    .then(registration => console.log('Service Worker registrado:', registration))
+                    .catch(error => console.error('Erro ao registrar Service Worker:', error));
             });
         }
 
@@ -164,18 +156,17 @@
 
         // Função para validar CRN no cliente
         function validarCRN(crn) {
-            if (!crn) return true; // CRN é opcional
+            if (!crn) return true;
             return /^CRN-[1-9][0]?[ ]?[0-9]{1,5}$/.test(crn);
         }
 
         // Verificar se usuário está logado
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) {
-                window.location.href = 'frame.html';
-            }
-        });
+        const user = localStorage.getItem('user');
+        if (user) {
+            window.location.href = '/nutri/frame.html';
+        }
 
-        // Login com email e senha
+        // Login
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const email = document.getElementById('login').value;
@@ -187,22 +178,21 @@
                 return;
             }
 
-            const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
-            if (error) {
-                mensagemLogin.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
-            } else {
-                window.location.href = 'frame.html';
-            }
-        });
-
-        // Login com Google
-        document.getElementById('loginGoogle').addEventListener('click', async function() {
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: { redirectTo: window.location.origin + '/nutri/frame.html' }
-            });
-            if (error) {
-                document.getElementById('mensagem-login').innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+            try {
+                const response = await fetch('https://blessed.com.br/mobile/api.php?action=login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, senha })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    window.location.href = '/nutri/frame.html';
+                } else {
+                    mensagemLogin.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                }
+            } catch (error) {
+                mensagemLogin.innerHTML = '<div class="alert alert-danger">Erro ao fazer login.</div>';
             }
         });
 
@@ -231,51 +221,48 @@
                 return;
             }
 
-            const { data: { user }, error } = await supabase.auth.signUp({
-                email,
-                password: senha,
-                options: { data: { nome, cidade_cad: cidade, registro_classe: registroClasse, cpf, timezone, nivel: 'Usuário' } }
-            });
-
-            if (error) {
-                mensagemCadastro.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
-            } else {
-                await supabase.from('users').insert([{
-                    id: user.id,
-                    nome,
-                    email,
-                    cidade_cad: cidade,
-                    registro_classe: registroClasse || null,
-                    cpf: cpf || null,
-                    timezone,
-                    nivel: 'Usuário',
-                    origem: window.location.host,
-                    created_at: new Date().toISOString()
-                }]);
-                mensagemCadastro.innerHTML = '<div class="alert alert-success">Cadastro realizado com sucesso! Você já pode fazer login.</div>';
-                document.getElementById('cadastroForm').reset();
-                const modal = bootstrap.Modal.getInstance(document.getElementById('cadastroModal'));
-                modal.hide();
+            try {
+                const response = await fetch('https://blessed.com.br/mobile/api.php?action=cadastro', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome, email, senha, cidade_cad: cidade, registro_classe: registroClasse, cpf, timezone })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    mensagemCadastro.innerHTML = '<div class="alert alert-success">Cadastro realizado com sucesso! Você já pode fazer login.</div>';
+                    document.getElementById('cadastroForm').reset();
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('cadastroModal'));
+                    modal.hide();
+                } else {
+                    mensagemCadastro.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                }
+            } catch (error) {
+                mensagemCadastro.innerHTML = '<div class="alert alert-danger">Erro ao realizar cadastro.</div>';
             }
         });
 
-        // Validação de email no cliente
+        // Validação de email
         document.getElementById('email').addEventListener('blur', async function() {
             const email = this.value;
             const feedback = this.nextElementSibling;
             if (email) {
-                const { data } = await supabase.from('users').select('email').eq('email', email);
-                if (data.length > 0) {
-                    this.classList.add('is-invalid');
-                } else {
-                    this.classList.remove('is-invalid');
+                try {
+                    const response = await fetch(`https://blessed.com.br/mobile/api.php?action=verificar-email&email=${encodeURIComponent(email)}`);
+                    const data = await response.json();
+                    if (data.exists) {
+                        this.classList.add('is-invalid');
+                    } else {
+                        this.classList.remove('is-invalid');
+                    }
+                } catch (error) {
+                    console.error('Erro ao verificar email:', error);
                 }
             } else {
                 this.classList.remove('is-invalid');
             }
         });
 
-        // Validação de CPF e CRN no cliente
+        // Validação de CPF e CRN
         document.getElementById('cpf').addEventListener('blur', function() {
             const cpf = this.value;
             if (cpf && !validarCPF(cpf)) {
@@ -295,5 +282,4 @@
         });
     </script>
 </body>
-
 </html>
