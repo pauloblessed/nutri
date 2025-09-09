@@ -1,11 +1,12 @@
-const CACHE_NAME = 'nutri-cache-v1';
+const CACHE_NAME = 'nutri-cache-v2';
 const urlsToCache = [
   '/nutri/',
   '/nutri/index.html',
-  '/nutri/styles.css', // Se você extrair o CSS para um arquivo separado
+  '/nutri/frame.html',
+  '/nutri/login_google.html',
+  '/nutri/styles.css', // Se você extrair o CSS
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
-  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js'
 ];
 
 self.addEventListener('install', event => {
@@ -16,13 +17,15 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
+  if (event.request.url.includes('blessed.com.br')) {
+    // Não cachear requisições ao backend
+    event.respondWith(fetch(event.request));
+    return;
+  }
   event.respondWith(
     caches.match(event.request)
       .then(response => response || fetch(event.request))
-      .catch(() => {
-        // Fallback para offline
-        return caches.match('/nutri/index.html');
-      })
+      .catch(() => caches.match('/nutri/index.html'))
   );
 });
 
