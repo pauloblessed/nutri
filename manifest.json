@@ -1,6 +1,6 @@
 {
   "name": "Sistema Nutricional",
-  "short_name": "Nutri",
+  "short_name": "NutriSis",
   "description": "Sistema gratuito para nutricionistas",
   "start_url": "/",
   "scope": "/",
@@ -22,3 +22,4 @@
     }
   ]
 }
+
