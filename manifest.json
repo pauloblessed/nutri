@@ -3,6 +3,7 @@
   "short_name": "Nutri",
   "description": "Sistema gratuito para nutricionistas",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f8f9fa",
   "theme_color": "#8B0000",
@@ -19,7 +20,5 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "scope": "/"
+  ]
 }
-
