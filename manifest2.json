@@ -1,6 +1,6 @@
 {
-  "name": "Blessed Mobile",
-  "short_name": "BlessedM",
+  "name": "Nutri Mobile",
+  "short_name": "NutriMobile",
   "start_url": "/mobile/",
   "scope": "/mobile/",
   "display": "standalone",
@@ -8,12 +8,12 @@
   "theme_color": "#2196f3",
   "icons": [
     {
-      "src": "/mobile/icons/icon-192x192.png",
+      "src": "https://paulo.kesug.com/mobile/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/mobile/icons/icon-512x512.png",
+      "src": "https://paulo.kesug.com/mobile/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
