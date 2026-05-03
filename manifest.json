@@ -2,7 +2,7 @@
   "name": "Sistema Nutricional",
   "short_name": "NutriSis",
   "description": "Sistema gratuito para nutricionistas",
-  "start_url": "/mysql/nutri1/",
+  "start_url": "/mysql/nutri1/index.php",
   "scope": "/mysql/nutri1/",
   "display": "standalone",
   "background_color": "#f8f9fa",
